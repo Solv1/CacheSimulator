@@ -17,14 +17,14 @@ def directMapping():
     cache_line = []
 
     print("Clearing and Initiailzing Cache Lines...")
-    for data in range(0,31):
-        cache_line.append(0x0)
+    for data in range(0,32):
+        cache_line.append(0)
 
 
-    for lines in range(0,31):
-        cache_lines.append(cache_line[0])
+    for lines in range(0,32):
+        cache_lines.append(cache_line)
 
-    with open(crc_trace.txt, "r") as command:
+    with open("crc_trace.txt", "r") as command:
         command.readline() #Gets read of that pesky readline 
         for line in command:
             file_line = line.split(',')
@@ -33,8 +33,8 @@ def directMapping():
             instr = file_line[1]
             if instr == 'w':
                 continue
-            data = file_line[2]
-            addr = file_line[3]
+            data = int(file_line[2],16)
+            addr = int(file_line[3],16)
 
             offset = addr & 0x1F 
             index = (addr >> 5) & 0x1F
@@ -43,15 +43,17 @@ def directMapping():
 
             if (cache_lines[index][offset] & 0x80000000) and ((cache_lines[index][offset] & 0x7FFF0000) == tag):
                 #Cache Hit
-                print("Cache Hit at Cycle Count: {0}", cycle_count)
+                print("Cache Hit at Cycle Count: ", cycle_count)
             else:
                 #Cache Miss
-                print("Cache Miss at Cycle Count: {0}", cycle_count)
+                print("Cache Miss at Cycle Count: ", cycle_count)
                 cache_lines[index][offset] = ((tag << 16) | data) | 0x80000000
 
 
 
+def fullAssocative():
 
+    
 
 
 
@@ -59,12 +61,13 @@ def directMapping():
 
 
 def main():
-    args = argparse.parse_args()
-    filename = args.file
 
-    #TODO: Handle File Input Parsing 
+    print("Starting Direct Mapping now...")
+    directMapping()
+    print("Direct Mapping All Done")
 
-
+if __name__ == '__main__':
+    main()
 
 
 
