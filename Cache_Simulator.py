@@ -11,43 +11,51 @@ argparse = argparse.ArgumentParser()
 argparse.add_argument("-f", "--file", help="name of cache data file you are passing in.")
 
 
-def emptyCache(cache):
-    cache = cache.clear()
-    blankcache = np.uint16(0)
 
-    for i in range(0,2047):
-        cache.append(blankcache)
+def directMapping():
+    cache_lines = []
+    cache_line = []
 
-def directMapping(data, cache):
+    print("Clearing and Initiailzing Cache Lines...")
+    for data in range(0,31):
+        cache_line.append(0x0)
 
-    numReads = 0
-    numWrites = 0
-    numCacheMiss = 0
-    numCacheHits = 0
 
-    for inst in data:
+    for lines in range(0,31):
+        cache_lines.append(cache_line[0])
 
-        rw = inst[1]
-        addr = hex(inst[2])
-        oldVal = hex(inst[3])
-        newVal = hex(inst[4])
+    with open(crc_trace.txt, "r") as command:
+        command.readline() #Gets read of that pesky readline 
+        for line in command:
+            file_line = line.split(',')
 
-        if addr < 0xB000 or addr > 0xFF80:
-            continue
-        if rw == 'r':
-            if cache[addr% 2047] != oldVal:
-                numCacheMiss += 1
-                numReads += 1
+            cycle_count = file_line[0]
+            instr = file_line[1]
+            if instr == 'w':
+                continue
+            data = file_line[2]
+            addr = file_line[3]
+
+            offset = addr & 0x1F 
+            index = (addr >> 5) & 0x1F
+            tag = (addr >> 10) & 0x1F
+            valid = addr & 0x8000
+
+            if (cache_lines[index][offset] & 0x80000000) and ((cache_lines[index][offset] & 0x7FFF0000) == tag):
+                #Cache Hit
+                print("Cache Hit at Cycle Count: {0}", cycle_count)
             else:
-                numCacheHits += 1
-                numReads += 1
+                #Cache Miss
+                print("Cache Miss at Cycle Count: {0}", cycle_count)
+                cache_lines[index][offset] = ((tag << 16) | data) | 0x80000000
 
-        elif rw == 'w':
-            cache[addr % 2047] = newVal
-            numWrites += 1
 
-        else:
-            raise Exception  
+
+
+
+
+
+
 
 
 def main():
@@ -56,9 +64,9 @@ def main():
 
     #TODO: Handle File Input Parsing 
 
-    cache = []
 
-    emptyCache(cache)
+
+
 
 
 
