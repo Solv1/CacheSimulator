@@ -4,6 +4,7 @@
 
 
 import random
+import copy
 from threading import Thread
 import argparse
 
@@ -123,13 +124,23 @@ def fourWayAssocaitve():
     cache_ways = []
     cache_sets = []
     hit = False
+    cache_hit = 0
+    cache_miss = 0
 
     print("Clearing and Initiailzing Cache Lines...")
     for lines in range(0,8):
         cache_sets.append(0)
+    cache_set0 = copy.deepcopy(cache_sets)
+    cache_set1 = copy.deepcopy(cache_sets)
+    cache_set2 = copy.deepcopy(cache_sets)
+    cache_set3 = copy.deepcopy(cache_sets)
 
-    for lines in range(0,4):
-        cache_ways.append(cache_sets)
+    cache_ways.append(cache_set0)
+    cache_ways.append(cache_set1)
+    cache_ways.append(cache_set2)
+    cache_ways.append(cache_set3)
+
+    print("Starting Four Way Assocaitive Sim please wait....")
 
     with open("crc_trace.txt", "r") as command:
         command.readline()         
@@ -142,11 +153,11 @@ def fourWayAssocaitve():
                 continue
             data = int(file_line[3], 16)
             addr = int(file_line[2], 16)
-            print("This is the address used: ", addr)
+            #print("This is the address used: ", addr)
             
             tag = (addr >> 6) & 0x3FF
             index = (addr >> 2) & 0x7
-            print("This is the tag used: ", tag)
+            #print("This is the tag used: ", tag)
             t0 = CacheThread(target=setSearch, args= (cache_ways[0],tag,index))
             t1 = CacheThread(target=setSearch, args=(cache_ways[1],tag,index))
             t2 = CacheThread(target=setSearch, args = (cache_ways[2],tag,index))
@@ -158,26 +169,28 @@ def fourWayAssocaitve():
             t3.start()
 
             result0 = t0.join()
-            print(result0)
             result1 = t1.join()
-            print(result1)
             result2 = t2.join()
-            print(result2)
             result3 = t3.join()
-            print(result3)
+            
 
             if result0:
-                print("Cache Hit in Way 1")
+                cache_hit =+ 1
             elif result1:
-                print("Cache Hit in Way 2")
+                cache_hit =+ 1
             elif result2:
-                print("Cache Hit in Way 3")
+                cache_hit += 1
             elif result3:
-                print("Cache Hit in Way 4")
+                cache_hit =+ 1
             else:
-                print("Cache Miss")
+                cache_miss =+ 1
                 ranway = random.randint(0,3)
-                cache_ways[ranway][index] = (tag << 16) | data                                
+                tag_data = (tag << 16) | data
+                cache_ways[ranway][index] = tag_data                             
+
+    print("Number of Cache Hits for Four Way Assocaitive: ", cache_hit)
+    print("Number of Cache Misses for Four Way Assocative: ", cache_miss)
+    print("-------------------------------------------------------------")
 
                     
 
