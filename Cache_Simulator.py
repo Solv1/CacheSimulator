@@ -12,6 +12,8 @@ import argparse
 argparse = argparse.ArgumentParser()
 argparse.add_argument("-f", "--file", help="name of cache data file you are passing in.")
 
+filename = "crc_trace.txt"
+
 
 class CacheThread(Thread):
     def __init__(self, group=None, target=None, name=None,
@@ -26,14 +28,16 @@ class CacheThread(Thread):
 
 def directMapping():
     cache_lines = []
-    cache_line = 0
+
+    cache_hit = 0
+    cache_miss = 0
 
     print("Clearing and Initiailzing Cache Lines...")
 
     for lines in range(0,32):
-        cache_lines.append(cache_line)
+        cache_lines.append(0)
 
-    with open("crc_trace.txt", "r") as command:
+    with open(filename, "r") as command:
         command.readline() #Gets rid of the first line 
         for line in command:
             file_line = line.split(',')
@@ -42,34 +46,45 @@ def directMapping():
             instr = file_line[1]
             if instr == 'w':
                 continue
-            data = int(file_line[2],16)
-            addr = int(file_line[3],16)
+            data = int(file_line[3],16)
+            addr = int(file_line[2],16)
  
-            #index = (addr >> 5) & 0x1F
-            index = addr % 32
+            index = (addr >> 5) & 0x1F
+            #index = addr % 32
             tag = (addr >> 10) & 0x1F
 
-            if ((cache_lines[index] & 0x7FFF0000) == tag):
+            if (((cache_lines[index] & 0x7FFF0000) >> 16) == tag):
                 #Cache Hit
-                print("Cache Hit at Cycle Count: " + str(cycle_count) + " and Index: " + str(index))
+                #print("Cache Hit at Cycle Count: " + str(cycle_count) + " and Index: " + str(index))
+                if addr <= 65408 and addr >= 45056:
+                    cache_hit += 1
             else:
                 #Cache Miss
-                print("Cache Miss at Cycle Count: ", cycle_count)
+                #print("Cache Miss at Cycle Count: ", cycle_count)
+                if addr <= 65408 and addr >= 45056:
+                    cache_miss += 1
                 cache_lines[index] = ((tag << 16) | data) | 0x80000000
+
+    print("Number of Cache Hits for Direct Mapping: ", cache_hit)
+    print("Number of Cache Misses for Direct Mapping: ", cache_miss)
+    print("-------------------------------------------------------------")
+
 
 
 
 def fullAssocative():
     cache_lines = []
-    cache_line = 0
     hit = False
+
+    cache_hit = 0
+    cache_miss = 0
 
     print("Clearing and Initiailzing Cache Lines...")
 
     for lines in range(0,32):
-        cache_lines.append(cache_line)
+        cache_lines.append(0)
 
-    with open("crc_trace.txt", "r") as command:
+    with open(filename, "r") as command:
         command.readline()         
         for line in command:
             file_line = line.split(',')
@@ -82,35 +97,43 @@ def fullAssocative():
             addr = int(file_line[2], 16)
             
             tag = (addr >> 8)
-            print("This is the addr " + str(addr))
-            print("This is the tag " + str(tag))
+            #print("This is the addr " + str(addr))
+            #print("This is the tag " + str(tag))
 
             for lines in cache_lines:
                     
                 if ((lines & 0xFFFF0000) >> 16) == tag:
-                    print("This is the pulled tag from cache: " + str((lines & 0xFFFF0000) >> 16))
-                    
-                    print("Cache Hit at address: " +f"{addr:02x}"+ " Cycle: " + cycle_count)
+                    #print("This is the pulled tag from cache: " + str((lines & 0xFFFF0000) >> 16))
+                    if addr <= 65408 and addr >= 45056:
+                        cache_hit += 1
+                    #print("Cache Hit at address: " +f"{addr:02x}"+ " Cycle: " + cycle_count)
                     hit = True
                     break
 
             if hit == True:
                 hit = False
                 continue
+            if addr <= 65408 and addr >= 45056:
+                cache_miss += 1
             for lines in cache_lines:
                 if lines == 0:
                     lines = (tag << 16) | data
-                    print("Cache Miss Data Stored in empty cache line offset")
+                    #print("Cache Miss Data Stored in empty cache line offset")
                     hit = True
                     break
                 if hit == True:
                     hit = False
                 continue
             ranline = random.randint(0,31)
-            print("Did not find a empty cache word...")
-            print("Writting to line " + str(ranline) )
+            #print("Did not find a empty cache word...")
+            #print("Writting to line " + str(ranline) )
             cache_lines[ranline] = (tag << 16) | data
             hit = False
+
+    print("Number of Cache Hits for Fully Assocaitive: ", cache_hit)
+    print("Number of Cache Misses for Fully Assocative: ", cache_miss)
+    print("-------------------------------------------------------------")
+
 
 def setSearch(cache_sets, tag, index):
     if (cache_sets[index] >> 16) == tag:
@@ -142,7 +165,7 @@ def fourWayAssocaitve():
 
     print("Starting Four Way Assocaitive Sim please wait....")
 
-    with open("crc_trace.txt", "r") as command:
+    with open(filename, "r") as command:
         command.readline()         
         for line in command:
             file_line = line.split(',')
@@ -175,15 +198,20 @@ def fourWayAssocaitve():
             
 
             if result0:
-                cache_hit =+ 1
+                if addr <= 65408 and addr >= 45056:
+                        cache_hit += 1
             elif result1:
-                cache_hit =+ 1
+                if addr <= 65408 and addr >= 45056:
+                        cache_hit += 1
             elif result2:
-                cache_hit += 1
+                if addr <= 65408 and addr >= 45056:
+                        cache_hit += 1
             elif result3:
-                cache_hit =+ 1
+                if addr <= 65408 and addr >= 45056:
+                        cache_hit += 1
             else:
-                cache_miss =+ 1
+                if addr <= 65408 and addr >= 45056:
+                    cache_miss += 1
                 ranway = random.randint(0,3)
                 tag_data = (tag << 16) | data
                 cache_ways[ranway][index] = tag_data                             
@@ -209,12 +237,12 @@ def main():
  `.____ .'\'-;__/'.___.'[___]|__]'.__.'  \______.'[___][___||__||__] 
                                                                      
 """)
-    #print("Starting Direct Mapping now...")
-    #directMapping()
-    #print("Direct Mapping All Done")
-    #print("Starting Fully Assocative....")
-    #fullAssocative()
-    #print("Fully Assocative all done")
+    print("Starting Direct Mapping now...")
+    directMapping()
+    print("Direct Mapping All Done")
+    print("Starting Fully Assocative....")
+    fullAssocative()
+    print("Fully Assocative all done")
     print("4-Part Set Assocative is next...")
     fourWayAssocaitve()
     print("All Done")
